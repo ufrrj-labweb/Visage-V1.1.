@@ -1,0 +1,9 @@
+class TestModels:
+    def RandomForestClassification():
+        return 0
+    def DecisionTreeClassification():
+        return 0
+    def AdaBoostClassification():
+        return 0
+    def XGBoostClassification():
+        return 0
