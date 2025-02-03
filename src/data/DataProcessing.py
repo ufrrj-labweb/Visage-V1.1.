@@ -5,7 +5,14 @@ import spacy
 from nltk.corpus import stopwords as nltk_stopwords
 from sklearn.feature_extraction.text import TfidfVectorizer
 from enelvo.normaliser import Normaliser
+from sklearn.model_selection import train_test_split
+import pickle
 class DataProcessing:
+    vect=None
+    def import_vect(self,vectorizer):
+        self.vect=vectorizer
+    def export_vect(self):
+        pickle.dump(self.vect, open("tfidf.pickle", "wb"))
     # Junta os dataframes dentro do vetor de dataframes
     def append_data(self,df_vector):
         df_final=df_vector[0]
@@ -36,18 +43,21 @@ class DataProcessing:
         lemm=[]
         for texts in corpus:
             lemm.append(norm.normalise(texts))
-        print(lemm)
-        vect=TfidfVectorizer(stop_words=stop_words)
-        processed=vect.fit_transform(lemm)
+        if self.vect is None:
+            self.vect=TfidfVectorizer(stop_words=stop_words)
+            self.vect.fit(corpus)
+        processed=self.vect.transform(lemm)
         return processed
     #Vetorização usando nltk
     def text_preprocessing_nltk_no_norm(self,corpus):
         stop_words=list(nltk_stopwords.words('portuguese'))
-        vect=TfidfVectorizer(stop_words=stop_words)
-        processed=vect.fit_transform(corpus)
+        if self.vect is None:
+            self.vect=TfidfVectorizer(stop_words=stop_words)
+            self.vect.fit(corpus)
+        processed=self.vect.transform(corpus)
         return processed
     #Mudar target para valor numerico
-    def numerical_target(target):
+    def numerical_target(self,target):
         target.replace('Not Violence',0,inplace=True)
         target.replace('Low',1,inplace=True)
         target.replace('Medium',2,inplace=True)
@@ -83,3 +93,25 @@ class DataProcessing:
         target_upsampled = pd.concat([target_false] + [target_true] * repeat)
 
         return features_upsampled, target_upsampled
+    def division(self,df_final):
+        df_final=df_final.drop_duplicates().reset_index()
+        features=self.text_preprocessing_nltk(df_final['text'])
+        target=df_final['Classe de Violência']
+        train_data, test_data, train_target, test_target = train_test_split(features, target, test_size=0.3, random_state=12345,shuffle=True,stratify=target)
+        
+        print(target.unique())
+        print(len(target[target=='Not Violence']))
+        print(len(target[target=='Low']))
+        print(len(target[target=='Medium']))
+        print(len(target[target=='High']))
+        print(len(target[target=='VeryHight']))
+        
+        return df_final,train_data, test_data, train_target, test_target
+    def upsampled_division(self,df_final):
+        df_sampled,garbage=train_test_split(df_final.drop_duplicates().reset_index(), test_size=0.3, random_state=12345,shuffle=True,stratify=df_final['Classe de Violência'])
+        features_sampled,target_sampled=self.upsample(df_sampled['text'], df_sampled['Classe de Violência'], 240,'Low')
+        features_sampled,target_sampled=self.upsample(features_sampled,target_sampled, 71,'Medium')
+        features_sampled,target_sampled=self.upsample(features_sampled,target_sampled, 13,'High')
+        features_sampled,target_sampled=self.upsample(features_sampled,target_sampled, 3,'VeryHigh')
+        features_sampled=self.text_preprocessing_nltk(features_sampled)
+        return features_sampled,target_sampled
