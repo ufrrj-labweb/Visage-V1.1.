@@ -19,6 +19,8 @@ Acellerate is a library that allows for the automatic parallelization of code us
 
 P.S: if you delete the mac specific libraries on the requirements_alt and download it might work, but we didn't get the chance to test that hypothesis out. If it doesnt, run the libray imports on the notebook and download the error message library with the version on requirements_alt.
 
+There might be some text artifacts left on the notebook from prior testing, since there was a time where we tested using or not normalizers for text, and we almost ran a XGBoost model, but it always crashed the macs kernel.
+
 
 Project Organization
 ------------
