@@ -1,7 +1,19 @@
 socialsensing
 ==============================
 
-A short description of the project.
+Code and images used for the VISAGE research project. Everything can be found on the notebooks exploratory folder, under the name boost_classifiers.
+
+The python version is 3.11.9 
+Please use:
+Transformers=4.39.1
+Accelerate=0.27.2
+
+A dockerfile or docker-compose should be available and working, but if its not, take a look at the requirements alt for the version of the libraries you will use, keep in mind that not all will be the same as i am using a m2 max base mac studio on MacOS Sequoia 15.3.1. 
+Downloading the python and library versions above, besides the libraries on the notebook with the versions on the requirements_alt should be enough to run the code anywhere though.
+
+If the data is not available, we might not have released it yet for public use, as it contains sensitive data in the form of user ids. If your aim is not to reproduce the results but just use the code to learn, the content of this repository with no data is enough. Although, I do not recommend using this code as a example of good optimization.
+
+Some design choices might seem questionable at best with some of the functions here, but I had to make it so all the models would be judged fairly against each other and have enough versatility that this does not become legacy tech at our lab (it will though).
 
 Project Organization
 ------------
