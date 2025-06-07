@@ -1,7 +1,9 @@
-socialsensing
+Visage
 ==============================
 
 Code and images used for the VISAGE research project. Everything can be found on the notebooks exploratory folder, under the name boost_classifiers.
+Model now available on hugging faces:
+https://huggingface.co/MHCTDS/visage
 
 The Python version is 3.11.9 
 Please use:
