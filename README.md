@@ -1,28 +1,22 @@
 Visage
 ==============================
 
-Code and images used for the VISAGE research project. Everything can be found on the notebooks exploratory folder, under the name boost_classifiers.
-Model now available on hugging faces:
-https://huggingface.co/MHCTDS/visage
+Code and images used for the VISAGE research project.
 
-The Python version is 3.11.9 
+V1.1 version, made to adress some issues in the original code
+Model now available on hugging faces:
+<https://huggingface.co/MHCTDS/visage>
+
+The Python version is 3.11.9
 Please use:
 Transformers=4.39.1
 Accelerate=0.27.2
 
-A dockerfile or docker-compose should be available and working, but if its not, take a look at the requirements alt for the version of the libraries you will use, keep in mind that not all will be the same as i am using a m2 max base mac studio on MacOS Sequoia 15.3.1. 
-Downloading the Python, Transformers and Acellerate versions above, besides the libraries on the notebook with the versions on the requirements_alt should be enough to run the code anywhere though, exact instructions on P.S below.
-
-If the data is not available, we might not have released it yet for public use, as it contains sensitive data in the form of user ids. If your aim is not to reproduce the results but just use the code to learn, the content of this repository with no data is enough. Although, I do not recommend using this code as a example of good optimization.
-
-Some design choices might seem questionable at best with some of the functions here, but I had to make it so all the models would be judged fairly against each other and have enough versatility that this does not become legacy tech at our lab (it will though).
+If the data is not available, we might not have released it yet for public use, as it contains sensitive data in the form of user ids. If your aim is not to reproduce the results but just use the code to learn, the content of this repository with no data is enough.
 
 Acellerate is a library that allows for the automatic parallelization of code using multiple CPUs, GPUs and NPUs based on the configuration you use, with the option of configuring your own settings or letting it auto recognize your hardware on installation via pip.
 
-P.S: if you delete the mac specific libraries on the requirements_alt and download it might work, but we didn't get the chance to test that hypothesis out. If it doesnt, run the libray imports on the notebook and download the error message library with the version on requirements_alt.
-
-There might be some text artifacts left on the notebook from prior testing, since there was a time where we tested using or not normalizers for text, and we almost ran a XGBoost model, but it always crashed the macs kernel.
-
+Requirements was made for mac, so it might not work on other pc
 
 Project Organization
 ------------
@@ -68,7 +62,6 @@ Project Organization
     │       └── visualize.py
     │
     └── tox.ini            <- tox file with settings for running tox; see tox.readthedocs.io
-
 
 --------
 
