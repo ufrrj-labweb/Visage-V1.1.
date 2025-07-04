@@ -22,6 +22,29 @@ class BertProcessing:
     pipe = None
     max_length = 512
 
+    # repeat é o numero de vezes que aquele target sera clonado, deve ser um int maior que 1
+    def upsample(self, features, target, repeat, value):
+        features_true = features[target == value]
+        features_false = features[target != value]
+        target_true = target[target == value]
+        target_false = target[target != value]
+
+        features_upsampled = pd.concat([features_false] + [features_true] * repeat)
+        target_upsampled = pd.concat([target_false] + [target_true] * repeat)
+
+        return features_upsampled, target_upsample
+
+    def convert_label(self, labels):
+        new_labels = []
+        for label in labels:
+            if label == "LABEL_0":
+                new_labels.append(0)
+            if label == "LABEL_3":
+                new_labels.append(3)
+            if label == "LABEL_4":
+                new_labels.append(4)
+        return new_labels
+
     # Mudar target para valor numerico
     def numerical_target(self, target):
         # Acts as a pointer, be careful
@@ -128,7 +151,6 @@ class BertProcessing:
 
     def loader_upsample(self, df_final):
         # df_final['Classe de Violência']=DataProcessing().numerical_target(df_final['Classe de Violência'])
-        DataProcess = DataProcessing()
         df_train, df_test = train_test_split(
             df_final.drop_duplicates().reset_index(),
             test_size=0.3,
@@ -136,16 +158,16 @@ class BertProcessing:
             shuffle=True,
             stratify=df_final["Classe de Violência"],
         )
-        features_sampled, target_sampled = DataProcess.upsample(
+        features_sampled, target_sampled = self.upsample(
             df_train["text"], df_train["Classe de Violência"], 240, "Low"
         )
-        features_sampled, target_sampled = DataProcess.upsample(
+        features_sampled, target_sampled = self.upsample(
             features_sampled, target_sampled, 71, "Medium"
         )
-        features_sampled, target_sampled = DataProcess.upsample(
+        features_sampled, target_sampled = self.upsample(
             features_sampled, target_sampled, 13, "High"
         )
-        features_sampled, target_sampled = DataProcess.upsample(
+        features_sampled, target_sampled = self.upsample(
             features_sampled, target_sampled, 3, "VeryHigh"
         )
 
@@ -334,7 +356,7 @@ class BertProcessing:
             output = pd.DataFrame(self.pipe.predict(features))
             pred_target = output[:]["label"]
             pred_proba = output[:]["score"]
-            pred_target = DataProcessing().convert_label(pred_target)
+            pred_target = self.convert_label(pred_target)
             test_matriz = self.prediction_matriz_by_class_bert(data=target)
             pred_proba_matriz = self.prediction_matriz_by_class_bert(data=pred_target)
 
