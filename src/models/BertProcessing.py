@@ -22,6 +22,16 @@ class BertProcessing:
     pipe = None
     max_length = 512
 
+    # Mudar target para valor numerico
+    def numerical_target(self, target):
+        # Acts as a pointer, be careful
+        target.replace("Not Violence", 0, inplace=True)
+        target.replace("Low", 1, inplace=True)
+        target.replace("Medium", 2, inplace=True)
+        target.replace("High", 3, inplace=True)
+        target.replace("VeryHight", 4, inplace=True)
+        return target
+
     def text_preprocessing(self, corpus):
         if self.norm is None:
             self.norm = Normaliser(tokenizer="readable", sanitize=True)
@@ -86,10 +96,10 @@ class BertProcessing:
             stratify=df_final["Classe de Violência"],
         )
 
-        df_train["Classe de Violência"] = DataProcessing().numerical_target(
+        df_train["Classe de Violência"] = self.numerical_target(
             df_train["Classe de Violência"]
         )
-        df_test["Classe de Violência"] = DataProcessing().numerical_target(
+        df_test["Classe de Violência"] = self.numerical_target(
             df_test["Classe de Violência"]
         )
 
@@ -139,15 +149,15 @@ class BertProcessing:
             features_sampled, target_sampled, 3, "VeryHigh"
         )
 
-        df_train["Classe de Violência"] = DataProcessing().numerical_target(
+        df_train["Classe de Violência"] = self.numerical_target(
             df_train["Classe de Violência"]
         )
-        df_test["Classe de Violência"] = DataProcessing().numerical_target(
+        df_test["Classe de Violência"] = self.numerical_target(
             df_test["Classe de Violência"]
         )
 
         train_data = pd.DataFrame()
-        train_data["label"] = DataProcessing().numerical_target(target_sampled)
+        train_data["label"] = self.numerical_target(target_sampled)
         train_data["text"] = features_sampled
         train_data.to_csv("train.csv", index=False)
 
