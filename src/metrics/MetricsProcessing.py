@@ -4,6 +4,7 @@ import numpy as np
 import sklearn.metrics as metrics
 from sklearn.metrics import recall_score
 from sklearn.decomposition import TruncatedSVD
+from sklearn.metrics import f1_score, accuracy_score, recall_score, precision_score
 
 
 class MetricsProcessing:

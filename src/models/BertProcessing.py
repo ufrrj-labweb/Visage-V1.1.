@@ -32,7 +32,7 @@ class BertProcessing:
         features_upsampled = pd.concat([features_false] + [features_true] * repeat)
         target_upsampled = pd.concat([target_false] + [target_true] * repeat)
 
-        return features_upsampled, target_upsample
+        return features_upsampled, target_upsampled
 
     def convert_label(self, labels):
         new_labels = []
