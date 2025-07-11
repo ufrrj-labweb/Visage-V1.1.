@@ -38,23 +38,29 @@ Project Organization
     ├── references         <- Data dictionaries, manuals, and all other explanatory materials.
     │
     ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
-    │   └── figures        <- Generated graphics and figures to be used in reporting                    // Contains the images used on the paper
+    │   └── figures        <- Generated graphics and figures to be used in reporting  // Contains the images used on the paper
     │
     ├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
-    │                         generated with `pip freeze > requirements.txt`                            // requirements.txt is using the libraries installed on the docker, requirements_alt is the dependencies on mac
+    │                         generated with `pip freeze > requirements.txt`                            
     │
     ├── setup.py           <- makes project pip installable (pip install -e .) so src can be imported
     ├── src                <- Source code for use in this project.
     │   ├── __init__.py    <- Makes src a Python module
     │   │
     │   ├── data           <- Scripts to download or generate data
+    │   │   ├── DataProcessing.py  // Class for data processing
     │   │   └── make_dataset.py
     │   │
     │   ├── features       <- Scripts to turn raw data into features for modeling
     │   │   └── build_features.py
     │   │
+    │   ├── metrics       <- Scripts to evaluate scikit models and everything related to metrics
+    │   │   └── MetricsProcessing.py  // Class for evaluation of models
+    │   │
     │   ├── models         <- Scripts to train models and then use trained models to make
     │   │   │                 predictions
+    │   │   ├── ModelProcessing.py  // Factory for scikit model creation and partial validation
+    │   │   ├── BertProcessing.py  // Independent class for all functions related for running the BERT model
     │   │   ├── predict_model.py
     │   │   └── train_model.py
     │   │
