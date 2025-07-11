@@ -7,6 +7,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from enelvo.normaliser import Normaliser
 from sklearn.model_selection import train_test_split
 import pickle
+import matplotlib.pyplot as plt
 
 
 class DataProcessing:
@@ -101,7 +102,7 @@ class DataProcessing:
         features_upsampled = pd.concat([features_false] + [features_true] * repeat)
         target_upsampled = pd.concat([target_false] + [target_true] * repeat)
 
-        return features_upsampled, target_upsample
+        return features_upsampled, target_upsampled
 
     def division(self, df_final):
         df_final = df_final.drop_duplicates().reset_index()
