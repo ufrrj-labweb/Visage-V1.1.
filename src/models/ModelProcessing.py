@@ -21,6 +21,7 @@ class ModelProcessing:
         print('best accuracy:',score_values[2])
         print('best f1:',score_values[5])
         print('best precision:',score_values[3])
+        model.fit(data,target)
         return model
     def adaboost_model(data,target):
         kf=StratifiedKFold(n_splits=5,shuffle=True,random_state=12345)
@@ -42,6 +43,7 @@ class ModelProcessing:
         print('best accuracy:',best_score_values[2])
         print('best f1:',best_score_values[5])
         print('best precision:',best_score_values[3])
+        best_model.fit(data,target)
         return best_model
     def florest_model(data,target):
         kf=StratifiedKFold(n_splits=5,shuffle=True,random_state=12345)
@@ -64,6 +66,7 @@ class ModelProcessing:
         print('best accuracy:',best_score_values[2])
         print('best f1:',best_score_values[5])
         print('best precision:',best_score_values[3])
+        best_model.fit(data,target)
         return best_model
     def tree_model(data,target):
         kf=StratifiedKFold(n_splits=5,shuffle=True,random_state=12345)
@@ -83,6 +86,7 @@ class ModelProcessing:
         print('best accuracy:',best_score_values[2])
         print('best f1:',best_score_values[5])
         print('best precision:',best_score_values[3])
+        best_model.fit(data,target)
         return best_model
     def naivebayes_model(data,target):
         kf=StratifiedKFold(n_splits=5,shuffle=True,random_state=12345)
@@ -96,4 +100,5 @@ class ModelProcessing:
         print('best accuracy:',score_values[2])
         print('best f1:',score_values[5])
         print('best precision:',score_values[3])
+        model.fit(data,target)
         return model
