@@ -79,6 +79,9 @@ target/
 /data/
 /notebooks/exploratory/mlruns
 /notebooks/exploratory/test_trainer
+/notebooks/exploratory/test.csv
+/notebooks/exploratory/train.csv
+/notebooks/exploratory/tfidf.pickle
 
 # Mac OS-specific storage files
 .DS_Store
