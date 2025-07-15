@@ -92,7 +92,7 @@ class ModelProcessing:
         kf=StratifiedKFold(n_splits=5,shuffle=True,random_state=12345)
         model = GaussianNB()
         scoring = ['accuracy','precision_weighted', 'recall_weighted','f1_weighted']
-        scores = cross_validate(model, data.toarray(), target,cv=kf, scoring=scoring)
+        scores = cross_validate(model, data, target,cv=kf, scoring=scoring)
         score_values=[score.mean() for score in scores.values()]
         print(sorted(scores.keys()))
         print([score.mean() for score in scores.values()])
