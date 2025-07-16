@@ -4,7 +4,8 @@ import numpy as np
 import sklearn.metrics as metrics
 from sklearn.metrics import recall_score
 from sklearn.decomposition import TruncatedSVD
-from sklearn.metrics import f1_score, accuracy_score, recall_score, precision_score
+from sklearn.metrics import f1_score, accuracy_score, recall_score, precision_score, RocCurveDisplay, auc, roc_curve
+from sklearn.model_selection import StratifiedKFold
 
 
 class MetricsProcessing:
@@ -224,3 +225,70 @@ class MetricsProcessing:
             "recall": recall,
             "f1": f1,
         }
+    def evaluate_alt(self,classifier,X,y,n_splits=5):
+        cv = StratifiedKFold(n_splits=n_splits)
+
+        tprs = []
+        aucs = []
+        mean_fpr = np.linspace(0, 1, 100)
+
+        fig, ax = plt.subplots(figsize=(6, 6))
+        for fold, (train, test) in enumerate(cv.split(X, y)):
+            classifier.fit(X[train], y[train])
+
+            prob_test_vec = classifier.predict_proba(X[test])
+            test_matriz = self.prediction_matriz_by_class(data=y[test])
+
+            #n_classes = 5
+            #fpr = [0] * 5
+            #tpr = [0] * 5
+            #thresholds = [0] * 5
+            #auc_score = [0] * 5
+
+            fpr, tpr, thresholds = roc_curve(test_matriz.values.ravel(),prob_test_vec.ravel())
+            auc_score = auc(fpr, tpr)
+
+            viz = RocCurveDisplay.from_predictions(
+                test_matriz.values.ravel(),
+                prob_test_vec.ravel(),
+                name=f"ROC fold {fold}",
+                ax=ax,
+                plot_chance_level=(fold == n_splits - 1),
+            )
+            interp_tpr = np.interp(mean_fpr, viz.fpr, viz.tpr)
+            interp_tpr[0] = 0.0
+            tprs.append(interp_tpr)
+            aucs.append(viz.roc_auc)
+
+        mean_tpr = np.mean(tprs, axis=0)
+        mean_tpr[-1] = 1.0
+        mean_auc = auc(mean_fpr, mean_tpr)
+        std_auc = np.std(aucs)
+        ax.plot(
+            mean_fpr,
+            mean_tpr,
+            color="b",
+            label=r"Mean ROC (AUC = %0.2f $\pm$ %0.2f)" % (mean_auc, std_auc),
+            lw=2,
+            alpha=0.8,
+        )
+
+        std_tpr = np.std(tprs, axis=0)
+        tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
+        tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
+        ax.fill_between(
+            mean_fpr,
+            tprs_lower,
+            tprs_upper,
+            color="grey",
+            alpha=0.2,
+            label=r"$\pm$ 1 std. dev.",
+        )
+
+        ax.set(
+            xlabel="False Positive Rate",
+            ylabel="True Positive Rate",
+            title=f"Mean ROC curve with variability\n(Positive label '')",
+        )
+        ax.legend(loc="lower right")
+        plt.show()
