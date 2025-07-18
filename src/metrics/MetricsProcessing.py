@@ -4,7 +4,7 @@ import numpy as np
 import sklearn.metrics as metrics
 from sklearn.metrics import recall_score
 from sklearn.decomposition import TruncatedSVD
-from sklearn.metrics import f1_score, accuracy_score, recall_score, precision_score, RocCurveDisplay, auc, roc_curve
+from sklearn.metrics import f1_score, accuracy_score, recall_score, precision_score, RocCurveDisplay, auc, roc_curve ,precision_recall_curve, PrecisionRecallDisplay
 from sklearn.model_selection import StratifiedKFold
 
 
@@ -230,21 +230,19 @@ class MetricsProcessing:
 
         tprs = []
         aucs = []
+        precision_vec=[]
+        recall_vec=[ ]
         mean_fpr = np.linspace(0, 1, 100)
 
-        fig, ax = plt.subplots(figsize=(6, 6))
+        fig, axs = plt.subplots(1,2,figsize=(15, 6))
         for fold, (train, test) in enumerate(cv.split(X, y)):
             classifier.fit(X[train], y[train])
 
+            #Probability and target matrix
             prob_test_vec = classifier.predict_proba(X[test])
             test_matriz = self.prediction_matriz_by_class(data=y[test])
 
-            #n_classes = 5
-            #fpr = [0] * 5
-            #tpr = [0] * 5
-            #thresholds = [0] * 5
-            #auc_score = [0] * 5
-
+            #ROC-AUC score
             fpr, tpr, thresholds = roc_curve(test_matriz.values.ravel(),prob_test_vec.ravel())
             auc_score = auc(fpr, tpr)
 
@@ -252,7 +250,7 @@ class MetricsProcessing:
                 test_matriz.values.ravel(),
                 prob_test_vec.ravel(),
                 name=f"ROC fold {fold}",
-                ax=ax,
+                ax=axs[0],
                 plot_chance_level=(fold == n_splits - 1),
             )
             interp_tpr = np.interp(mean_fpr, viz.fpr, viz.tpr)
@@ -260,6 +258,18 @@ class MetricsProcessing:
             tprs.append(interp_tpr)
             aucs.append(viz.roc_auc)
 
+            #PRC-APS score
+            precision, recall, thresholds = precision_recall_curve(test_matriz.values.ravel(),prob_test_vec.ravel())
+            aps = metrics.average_precision_score(test_matriz.values.ravel(), prob_test_vec.ravel(), average="micro")
+
+            dis = PrecisionRecallDisplay.from_predictions(test_matriz.values.ravel(), prob_test_vec.ravel(),name=f"PRC fold {fold}",ax=axs[1],plot_chance_level=(fold == n_splits - 1))
+            #interp_tpr_aps = np.interp(mean_fpr, dis.fpr, dis.tpr)
+            #interp_tpr_aps[0] = 0.0
+            precision_vec.append(precision)
+            recall_vec.append(recall)
+
+        #ROC
+        ax = axs[0]
         mean_tpr = np.mean(tprs, axis=0)
         mean_tpr[-1] = 1.0
         mean_auc = auc(mean_fpr, mean_tpr)
@@ -291,4 +301,13 @@ class MetricsProcessing:
             title=f"Mean ROC curve with variability\n(Positive label '')",
         )
         ax.legend(loc="lower right")
+
+        #PRC
+        ax = axs[1]
+        ax.set(
+            xlabel="Recall",
+            ylabel="Precision",
+            title=f"Mean PRC curve with variability\n(Positive label '')",
+        )
+
         plt.show()
