@@ -265,8 +265,12 @@ class BertProcessing:
     
     def train_model(self,model,X_train,y_train,X_test,y_test):
             
-        df_train=pd.DataFrame([X_train,y_train])
-        df_test=pd.DataFrame([X_test,y_test])
+        df_train=pd.DataFrame()
+        df_train["Classe de Violência"]=X_train
+        df_train["text"]=y_train
+        df_test=pd.DataFrame()
+        df_test["Classe de Violência"]=X_test
+        df_test["text"]=y_test
         df_train['Classe de Violência']=self.numerical_target(df_train['Classe de Violência'])
         df_test['Classe de Violência']=self.numerical_target(df_test['Classe de Violência'])
             
@@ -533,7 +537,7 @@ class BertProcessing:
     
     def evaluate_alt(self,classifier,X,y,n_splits=5):
         cv = StratifiedKFold(n_splits=n_splits)
-
+        y=y.reset_index(drop=True)
         tprs = []
         aucs = []
         precision_vec=[]
@@ -546,7 +550,7 @@ class BertProcessing:
         fig, axs = plt.subplots(1,2,figsize=(15, 6))
         for fold, (train, test) in enumerate(cv.split(X, y)):
             #Train BERT with data
-            model=self.train_model(classifier)
+            model=self.train_model(classifier,X[train],y[train],X[test],y[test])
             local_pipe=pipeline(
                 "text-classification",
                 model=model,

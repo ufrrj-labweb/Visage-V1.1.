@@ -82,6 +82,7 @@ target/
 /notebooks/exploratory/test.csv
 /notebooks/exploratory/train.csv
 /notebooks/exploratory/tfidf.pickle
+/notebooks/exploratory/data/
 
 # Mac OS-specific storage files
 .DS_Store
