@@ -11,9 +11,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.model_selection import train_test_split
 from datasets import load_dataset
-from sklearn.metrics import f1_score, accuracy_score, recall_score, precision_score
+from sklearn.metrics import f1_score, accuracy_score, recall_score, precision_score, RocCurveDisplay, auc, roc_curve ,precision_recall_curve, PrecisionRecallDisplay
 import sklearn.metrics as metrics
+from sklearn.model_selection import cross_validate, StratifiedKFold
 import os
+from accelerate import Accelerator
+import torch
 
 
 class BertProcessing:
@@ -259,6 +262,54 @@ class BertProcessing:
         os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
         return model
+    
+    def train_model(self,model,X_train,y_train,X_test,y_test):
+            
+        df_train=pd.DataFrame([X_train,y_train])
+        df_test=pd.DataFrame([X_test,y_test])
+        df_train['Classe de Violência']=self.numerical_target(df_train['Classe de Violência'])
+        df_test['Classe de Violência']=self.numerical_target(df_test['Classe de Violência'])
+            
+        train_data=pd.DataFrame()
+        train_data['label']=df_train['Classe de Violência']
+        train_data['text']=df_train['text']
+        train_data.to_csv('./data/train.csv',index=False)
+            
+        test_data=pd.DataFrame()
+        test_data['label']=df_test['Classe de Violência']
+        test_data['text']=df_test['text']
+        test_data.to_csv('./data/test.csv',index=False)
+
+        device=torch.device("mps")
+        dataset = load_dataset('csv', data_files={'train': "./data/train.csv",'test': "./data/test.csv"}).with_format("torch", device=device)
+        tokenized_datasets = dataset.map(self.text_preprocessing, batched=True,batch_size=len(y_train)+len(y_test))
+            
+        train_dataset = tokenized_datasets["train"]
+        test_dataset = tokenized_datasets["test"]
+
+        training_args = TrainingArguments(output_dir="test_trainer",
+        evaluation_strategy="epoch",
+        save_strategy="epoch",
+        load_best_model_at_end=True,
+        push_to_hub=False,
+        learning_rate=2e-6,
+        per_device_train_batch_size=16,
+        per_device_eval_batch_size=16,
+        num_train_epochs=5,
+        weight_decay=0.05,
+        )
+        accelerator = Accelerator()
+        model=accelerator.prepare(model)
+        trainer = accelerator.prepare(Trainer(
+            model=model,
+            args=training_args,
+            train_dataset=train_dataset,
+            eval_dataset=test_dataset,
+            compute_metrics=self.compute_metrics,
+        ))
+        trainer.train()
+
+        return model
 
     def predict(self, model, corpus):
         max_length = 512
@@ -479,3 +530,120 @@ class BertProcessing:
         print(df_eval_stats)
 
         return
+    
+    def evaluate_alt(self,classifier,X,y,n_splits=5):
+        cv = StratifiedKFold(n_splits=n_splits)
+
+        tprs = []
+        aucs = []
+        precision_vec=[]
+        precision_vec_alt=[]
+        recall_vec=[]
+        aps_vec=[]
+        mean_fpr = np.linspace(0, 1, 100)
+        mean_test = np.linspace(0, 1, 100)
+
+        fig, axs = plt.subplots(1,2,figsize=(15, 6))
+        for fold, (train, test) in enumerate(cv.split(X, y)):
+            #Train BERT with data
+            model=self.train_model(classifier)
+            local_pipe=pipeline(
+                "text-classification",
+                model=model,
+                tokenizer=self.tokenizer,
+                device_map="auto",
+            )
+
+            #Probability and target matrix
+            output = pd.DataFrame(local_pipe.predict(X[test]))
+            pred_target = output[:]["label"]
+            prob_test_vec = output[:]["score"]
+            pred_target = self.convert_label(pred_target)
+            test_matriz = self.prediction_matriz_by_class_bert(data=y[test])
+            pred_proba_matriz = self.prediction_matriz_by_class_bert(data=pred_target)
+
+            #ROC-AUC score
+            fpr, tpr, thresholds = roc_curve(test_matriz.values.ravel(),prob_test_vec.ravel())
+            auc_score = auc(fpr, tpr)
+
+            viz = RocCurveDisplay.from_predictions(
+                test_matriz.values.ravel(),
+                prob_test_vec.ravel(),
+                name=f"ROC fold {fold}",
+                ax=axs[0],
+                plot_chance_level=(fold == n_splits - 1),
+            )
+            interp_tpr = np.interp(mean_fpr, viz.fpr, viz.tpr)
+            interp_tpr[0] = 0.0
+            tprs.append(interp_tpr)
+            aucs.append(viz.roc_auc)
+
+            #PRC-APS score
+            precision, recall, thresholds = precision_recall_curve(test_matriz.values.ravel(),prob_test_vec.ravel())
+            aps = metrics.average_precision_score(test_matriz.values.ravel(), prob_test_vec.ravel(), average="micro")
+
+            dis = PrecisionRecallDisplay.from_predictions(test_matriz.values.ravel(), prob_test_vec.ravel(),name=f"PRC fold {fold}",ax=axs[1],plot_chance_level=(fold == n_splits - 1))
+            #interp_tpr_aps = np.interp(mean_fpr, dis.fpr, dis.tpr)
+            #interp_tpr_aps[0] = 0.0
+            precision_vec.append(precision)
+            recall_vec.append(recall)
+            aps_vec.append(aps)
+
+        #ROC
+        ax = axs[0]
+        mean_tpr = np.mean(tprs, axis=0)
+        mean_tpr[-1] = 1.0
+        mean_auc = auc(mean_fpr, mean_tpr)
+        std_auc = np.std(aucs)
+        ax.plot(
+            mean_fpr,
+            mean_tpr,
+            color="b",
+            label=r"Mean ROC (AUC = %0.2f $\pm$ %0.2f)" % (mean_auc, std_auc),
+            lw=2,
+            alpha=0.8,
+        )
+
+        std_tpr = np.std(tprs, axis=0)
+        tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
+        tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
+        ax.fill_between(
+            mean_fpr,
+            tprs_lower,
+            tprs_upper,
+            color="grey",
+            alpha=0.2,
+            label=r"$\pm$ 1 std. dev.",
+        )
+
+        ax.set(
+            xlabel="False Positive Rate",
+            ylabel="True Positive Rate",
+            title=f"Mean ROC curve with variability\n(Positive label '')",
+        )
+        ax.legend(loc="lower right")
+
+        #PRC
+        ax = axs[1]
+        #mean_precision = np.mean(precision_vec, axis=0)
+        #mean_recall=np.mean(recall_vec, axis=0)
+        mean_aps = np.mean(aps_vec)
+        std_aps = np.std(aps_vec)
+        #ax.plot(
+        #    mean_recall,
+        #    mean_precision,
+        #    color="b",
+        #    label=r"Mean PRC (APS = %0.2f $\pm$ %0.2f)" % (mean_aps, std_aps),
+        #    lw=2,
+        #    alpha=0.8,
+        #)
+        print("Mean APS:",mean_aps)
+        print("stardard deviation APS:",std_aps)
+        ax.set(
+            xlabel="Recall",
+            ylabel="Precision",
+            title=f"Mean PRC curve with variability\n(Positive label '')",
+        )
+        ax.legend(loc="lower right")
+
+        plt.show()

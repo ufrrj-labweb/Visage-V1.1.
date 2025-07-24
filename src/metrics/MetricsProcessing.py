@@ -231,8 +231,11 @@ class MetricsProcessing:
         tprs = []
         aucs = []
         precision_vec=[]
-        recall_vec=[ ]
+        precision_vec_alt=[]
+        recall_vec=[]
+        aps_vec=[]
         mean_fpr = np.linspace(0, 1, 100)
+        mean_test = np.linspace(0, 1, 100)
 
         fig, axs = plt.subplots(1,2,figsize=(15, 6))
         for fold, (train, test) in enumerate(cv.split(X, y)):
@@ -267,6 +270,7 @@ class MetricsProcessing:
             #interp_tpr_aps[0] = 0.0
             precision_vec.append(precision)
             recall_vec.append(recall)
+            aps_vec.append(aps)
 
         #ROC
         ax = axs[0]
@@ -304,10 +308,25 @@ class MetricsProcessing:
 
         #PRC
         ax = axs[1]
+        #mean_precision = np.mean(precision_vec, axis=0)
+        #mean_recall=np.mean(recall_vec, axis=0)
+        mean_aps = np.mean(aps_vec)
+        std_aps = np.std(aps_vec)
+        #ax.plot(
+        #    mean_recall,
+        #    mean_precision,
+        #    color="b",
+        #    label=r"Mean PRC (APS = %0.2f $\pm$ %0.2f)" % (mean_aps, std_aps),
+        #    lw=2,
+        #    alpha=0.8,
+        #)
+        print("Mean APS:",mean_aps)
+        print("stardard deviation APS:",std_aps)
         ax.set(
             xlabel="Recall",
             ylabel="Precision",
             title=f"Mean PRC curve with variability\n(Positive label '')",
         )
+        ax.legend(loc="lower right")
 
         plt.show()
