@@ -266,11 +266,11 @@ class BertProcessing:
     def train_model(self,model,X_train,y_train,X_test,y_test):
             
         df_train=pd.DataFrame()
-        df_train["Classe de Violência"]=X_train
-        df_train["text"]=y_train
+        df_train["Classe de Violência"]=y_train
+        df_train["text"]=X_train
         df_test=pd.DataFrame()
-        df_test["Classe de Violência"]=X_test
-        df_test["text"]=y_test
+        df_test["Classe de Violência"]=y_test
+        df_test["text"]=X_test
         df_train['Classe de Violência']=self.numerical_target(df_train['Classe de Violência'])
         df_test['Classe de Violência']=self.numerical_target(df_test['Classe de Violência'])
             
@@ -535,7 +535,7 @@ class BertProcessing:
 
         return
     
-    def evaluate_alt(self,classifier,X,y,n_splits=5):
+    def evaluate_alt(self,X,y,n_splits=5):
         cv = StratifiedKFold(n_splits=n_splits)
         y=y.reset_index(drop=True)
         tprs = []
@@ -550,16 +550,29 @@ class BertProcessing:
         fig, axs = plt.subplots(1,2,figsize=(15, 6))
         for fold, (train, test) in enumerate(cv.split(X, y)):
             #Train BERT with data
+            classifier = BertForSequenceClassification.from_pretrained(
+            "neuralmind/bert-base-portuguese-cased", num_labels=5, torch_dtype="auto"
+            )
+
             model=self.train_model(classifier,X[train],y[train],X[test],y[test])
+
+            tokenizer=AutoTokenizer.from_pretrained(
+                "neuralmind/bert-base-portuguese-cased",
+                do_lower_case=False,
+                padding="max_length",
+                truncation=True,
+                max_length=self.max_length,
+            )
+
             local_pipe=pipeline(
                 "text-classification",
                 model=model,
-                tokenizer=self.tokenizer,
+                tokenizer=tokenizer,
                 device_map="auto",
             )
 
             #Probability and target matrix
-            output = pd.DataFrame(local_pipe.predict(X[test]))
+            output = pd.DataFrame(local_pipe.predict(list(X[test])))
             pred_target = output[:]["label"]
             prob_test_vec = output[:]["score"]
             pred_target = self.convert_label(pred_target)
@@ -567,12 +580,12 @@ class BertProcessing:
             pred_proba_matriz = self.prediction_matriz_by_class_bert(data=pred_target)
 
             #ROC-AUC score
-            fpr, tpr, thresholds = roc_curve(test_matriz.values.ravel(),prob_test_vec.ravel())
+            fpr, tpr, thresholds = roc_curve(test_matriz.values.ravel(),pred_proba_matriz.values.ravel())
             auc_score = auc(fpr, tpr)
 
             viz = RocCurveDisplay.from_predictions(
                 test_matriz.values.ravel(),
-                prob_test_vec.ravel(),
+                pred_proba_matriz.values.ravel(),
                 name=f"ROC fold {fold}",
                 ax=axs[0],
                 plot_chance_level=(fold == n_splits - 1),
@@ -583,10 +596,10 @@ class BertProcessing:
             aucs.append(viz.roc_auc)
 
             #PRC-APS score
-            precision, recall, thresholds = precision_recall_curve(test_matriz.values.ravel(),prob_test_vec.ravel())
-            aps = metrics.average_precision_score(test_matriz.values.ravel(), prob_test_vec.ravel(), average="micro")
+            precision, recall, thresholds = precision_recall_curve(test_matriz.values.ravel(),pred_proba_matriz.values.ravel())
+            aps = metrics.average_precision_score(test_matriz.values.ravel(),pred_proba_matriz.values.ravel(), average="micro")
 
-            dis = PrecisionRecallDisplay.from_predictions(test_matriz.values.ravel(), prob_test_vec.ravel(),name=f"PRC fold {fold}",ax=axs[1],plot_chance_level=(fold == n_splits - 1))
+            dis = PrecisionRecallDisplay.from_predictions(test_matriz.values.ravel(),pred_proba_matriz.values.ravel(),name=f"PRC fold {fold}",ax=axs[1],plot_chance_level=(fold == n_splits - 1))
             #interp_tpr_aps = np.interp(mean_fpr, dis.fpr, dis.tpr)
             #interp_tpr_aps[0] = 0.0
             precision_vec.append(precision)
@@ -651,3 +664,10 @@ class BertProcessing:
         ax.legend(loc="lower right")
 
         plt.show()
+
+        model_final = BertForSequenceClassification.from_pretrained(
+            "neuralmind/bert-base-portuguese-cased", num_labels=5, torch_dtype="auto"
+        )
+        model_final=self.train_model(classifier,X,y,X[test],y[test])
+
+        return model_final
