@@ -46,6 +46,11 @@ class BertProcessing:
                 new_labels.append(3)
             if label == "LABEL_4":
                 new_labels.append(4)
+
+            if label == "LABEL_2":
+                new_labels.append(2)
+            if label == "LABEL_1":
+                new_labels.append(1)
         return new_labels
 
     # Mudar target para valor numerico
@@ -296,11 +301,6 @@ class BertProcessing:
         save_strategy="epoch",
         load_best_model_at_end=True,
         push_to_hub=False,
-        learning_rate=2e-6,
-        per_device_train_batch_size=16,
-        per_device_eval_batch_size=16,
-        num_train_epochs=5,
-        weight_decay=0.05,
         )
         accelerator = Accelerator()
         model=accelerator.prepare(model)
@@ -572,15 +572,19 @@ class BertProcessing:
             )
 
             #Probability and target matrix
+            print(list(X[test]))
             output = pd.DataFrame(local_pipe.predict(list(X[test])))
+            print(output[1:5])
             pred_target = output[:]["label"]
-            prob_test_vec = output[:]["score"]
             pred_target = self.convert_label(pred_target)
-            test_matriz = self.prediction_matriz_by_class_bert(data=y[test])
+            test_matriz = self.prediction_matriz_by_class_bert(data=self.numerical_target(y[test]))
             pred_proba_matriz = self.prediction_matriz_by_class_bert(data=pred_target)
+            print(test_matriz[1:5])
+            print(pred_proba_matriz[1:5])
 
             #ROC-AUC score
             fpr, tpr, thresholds = roc_curve(test_matriz.values.ravel(),pred_proba_matriz.values.ravel())
+            print(fpr)
             auc_score = auc(fpr, tpr)
 
             viz = RocCurveDisplay.from_predictions(
@@ -598,6 +602,7 @@ class BertProcessing:
             #PRC-APS score
             precision, recall, thresholds = precision_recall_curve(test_matriz.values.ravel(),pred_proba_matriz.values.ravel())
             aps = metrics.average_precision_score(test_matriz.values.ravel(),pred_proba_matriz.values.ravel(), average="micro")
+            print(precision)
 
             dis = PrecisionRecallDisplay.from_predictions(test_matriz.values.ravel(),pred_proba_matriz.values.ravel(),name=f"PRC fold {fold}",ax=axs[1],plot_chance_level=(fold == n_splits - 1))
             #interp_tpr_aps = np.interp(mean_fpr, dis.fpr, dis.tpr)

@@ -10,7 +10,7 @@ from sklearn.dummy import DummyClassifier
 # Classe de treinamento dos modelos e metricas não otimizadas/todas as iterações
 class ModelProcessing:
     def dummy_model(data,target):
-        kf=StratifiedKFold(n_splits=5,shuffle=True,random_state=12345)
+        kf=StratifiedKFold(n_splits=10,shuffle=True,random_state=12345)
         model=DummyClassifier(strategy="most_frequent")
         scoring = ['accuracy','precision_weighted', 'recall_weighted','f1_weighted']
         scores = cross_validate(model, data, target,cv=kf, scoring=scoring)
@@ -24,7 +24,7 @@ class ModelProcessing:
         model.fit(data,target)
         return model
     def adaboost_model(data,target):
-        kf=StratifiedKFold(n_splits=5,shuffle=True,random_state=12345)
+        kf=StratifiedKFold(n_splits=10,shuffle=True,random_state=12345)
         best_score_values=[0,0,0,0,0,0]
         #Talvez não tenha parametro  ou random_state
         #Talvez tenha parametro learning rate, talvez vale a pena testar
@@ -33,7 +33,7 @@ class ModelProcessing:
             scoring = ['accuracy','precision_weighted', 'recall_weighted','f1_weighted']
             scores = cross_validate(model, data, target,cv=kf, scoring=scoring)
             scores_values=[score.mean() for score in scores.values()]
-            if best_score_values[4]<scores_values[4]:
+            if best_score_values[5]<scores_values[5]:
                 best_model=model
                 best_estimators=estimators
                 best_score=scores
@@ -46,7 +46,7 @@ class ModelProcessing:
         best_model.fit(data,target)
         return best_model
     def florest_model(data,target):
-        kf=StratifiedKFold(n_splits=5,shuffle=True,random_state=12345)
+        kf=StratifiedKFold(n_splits=10,shuffle=True,random_state=12345)
         best_score_values=[0,0,0,0,0,0]
         for size in tqdm(range(1,50)):
             for depth in range(1,30):
@@ -54,7 +54,7 @@ class ModelProcessing:
                 scoring = ['accuracy','precision_weighted', 'recall_weighted','f1_weighted']
                 scores = cross_validate(model, data, target,cv=kf, scoring=scoring)
                 scores_values=[score.mean() for score in scores.values()]
-                if best_score_values[4]<scores_values[4]:
+                if best_score_values[5]<scores_values[5]:
                     best_model=model
                     best_size=size
                     best_depth=depth
@@ -69,14 +69,14 @@ class ModelProcessing:
         best_model.fit(data,target)
         return best_model
     def tree_model(data,target):
-        kf=StratifiedKFold(n_splits=5,shuffle=True,random_state=12345)
+        kf=StratifiedKFold(n_splits=10,shuffle=True,random_state=12345)
         best_score_values=[0,0,0,0,0,0]
         for depth in tqdm(range(1,100)):
             model=DecisionTreeClassifier(random_state=123456789,max_depth=depth)
             scoring = ['accuracy','precision_weighted', 'recall_weighted','f1_weighted']
             scores = cross_validate(model, data, target,cv=kf, scoring=scoring)
             scores_values=[score.mean() for score in scores.values()]
-            if best_score_values[4]<scores_values[4]:
+            if best_score_values[5]<scores_values[5]:
                 best_model=model
                 best_depth=depth
                 best_score=scores
@@ -89,7 +89,7 @@ class ModelProcessing:
         best_model.fit(data,target)
         return best_model
     def naivebayes_model(data,target):
-        kf=StratifiedKFold(n_splits=5,shuffle=True,random_state=12345)
+        kf=StratifiedKFold(n_splits=10,shuffle=True,random_state=12345)
         model = GaussianNB()
         scoring = ['accuracy','precision_weighted', 'recall_weighted','f1_weighted']
         scores = cross_validate(model, data, target,cv=kf, scoring=scoring)
