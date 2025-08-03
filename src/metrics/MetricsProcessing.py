@@ -226,7 +226,7 @@ class MetricsProcessing:
             "f1": f1,
         }
     def evaluate_alt(self,classifier,X,y,n_splits=5):
-        cv = StratifiedKFold(n_splits=n_splits)
+        cv = StratifiedKFold(n_splits=n_splits,shuffle=True,random_state=12345)
 
         tprs = []
         aucs = []

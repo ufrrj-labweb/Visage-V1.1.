@@ -536,7 +536,7 @@ class BertProcessing:
         return
     
     def evaluate_alt(self,X,y,n_splits=5):
-        cv = StratifiedKFold(n_splits=n_splits)
+        cv = StratifiedKFold(n_splits=n_splits,shuffle=True,random_state=12345)
         y=y.reset_index(drop=True)
         tprs = []
         aucs = []
@@ -668,5 +668,168 @@ class BertProcessing:
             "neuralmind/bert-base-portuguese-cased", num_labels=5, torch_dtype="auto"
         )
         model_final=self.train_model(classifier,X,y,X[test],y[test])
+
+        return model_final
+    
+    def upsample(self, features, target, repeat, value):
+        features_true = features[target == value]
+        features_false = features[target != value]
+        target_true = target[target == value]
+        target_false = target[target != value]
+
+        features_upsampled = pd.concat([features_false] + [features_true] * repeat)
+        target_upsampled = pd.concat([target_false] + [target_true] * repeat)
+
+        return features_upsampled, target_upsampled
+    
+    def evaluate_alt_upsampled(self,X,y,n_splits=5):
+        cv = StratifiedKFold(n_splits=n_splits,shuffle=True,random_state=12345)
+        y=y.reset_index(drop=True)
+        tprs = []
+        aucs = []
+        precision_vec=[]
+        precision_vec_alt=[]
+        recall_vec=[]
+        aps_vec=[]
+        mean_fpr = np.linspace(0, 1, 100)
+        mean_test = np.linspace(0, 1, 100)
+
+        fig, axs = plt.subplots(1,2,figsize=(15, 6))
+        for fold, (train, test) in enumerate(cv.split(X, y)):
+            #Train BERT with data
+            classifier = BertForSequenceClassification.from_pretrained(
+            "neuralmind/bert-base-portuguese-cased", num_labels=5, torch_dtype="auto"
+            )
+
+            test_data=X[test]
+            test_target=y[test]
+
+            train_data=X[train]
+            train_target=y[train]
+            train_data,train_target=self.upsample(train_data,train_target,71, "Medium")
+            train_data,train_target=self.upsample(train_data,train_target,13, "High")
+            train_data,train_target=self.upsample(train_data,train_target,3, "VeryHigh")
+            train_data,train_target=self.upsample(train_data,train_target,240, "Low")
+
+            model=self.train_model(classifier,train_data,train_target,test_data,test_target)
+
+            tokenizer=AutoTokenizer.from_pretrained(
+                "neuralmind/bert-base-portuguese-cased",
+                do_lower_case=False,
+                padding="max_length",
+                truncation=True,
+                max_length=self.max_length,
+            )
+
+            local_pipe=pipeline(
+                "text-classification",
+                model=model,
+                tokenizer=tokenizer,
+                device_map="auto",
+            )
+
+            #Probability and target matrix
+            output = pd.DataFrame(local_pipe.predict(list(test_data)))
+            pred_target = output[:]["label"]
+            pred_target = self.convert_label(pred_target)
+            test_matriz = self.prediction_matriz_by_class_bert(data=self.numerical_target(test_target))
+            pred_proba_matriz = self.prediction_matriz_by_class_bert(data=pred_target)
+
+            #ROC-AUC score
+            fpr, tpr, thresholds = roc_curve(test_matriz.values.ravel(),pred_proba_matriz.values.ravel())
+            auc_score = auc(fpr, tpr)
+
+            viz = RocCurveDisplay.from_predictions(
+                test_matriz.values.ravel(),
+                pred_proba_matriz.values.ravel(),
+                name=f"ROC fold {fold}",
+                ax=axs[0],
+                plot_chance_level=(fold == n_splits - 1),
+            )
+            interp_tpr = np.interp(mean_fpr, viz.fpr, viz.tpr)
+            interp_tpr[0] = 0.0
+            tprs.append(interp_tpr)
+            aucs.append(viz.roc_auc)
+
+            #PRC-APS score
+            precision, recall, thresholds = precision_recall_curve(test_matriz.values.ravel(),pred_proba_matriz.values.ravel())
+            aps = metrics.average_precision_score(test_matriz.values.ravel(),pred_proba_matriz.values.ravel(), average="micro")
+
+            dis = PrecisionRecallDisplay.from_predictions(test_matriz.values.ravel(),pred_proba_matriz.values.ravel(),name=f"PRC fold {fold}",ax=axs[1],plot_chance_level=(fold == n_splits - 1))
+            #interp_tpr_aps = np.interp(mean_fpr, dis.fpr, dis.tpr)
+            #interp_tpr_aps[0] = 0.0
+            precision_vec.append(precision)
+            recall_vec.append(recall)
+            aps_vec.append(aps)
+
+        #ROC
+        ax = axs[0]
+        mean_tpr = np.mean(tprs, axis=0)
+        mean_tpr[-1] = 1.0
+        mean_auc = auc(mean_fpr, mean_tpr)
+        std_auc = np.std(aucs)
+        ax.plot(
+            mean_fpr,
+            mean_tpr,
+            color="b",
+            label=r"Mean ROC (AUC = %0.2f $\pm$ %0.2f)" % (mean_auc, std_auc),
+            lw=2,
+            alpha=0.8,
+        )
+
+        std_tpr = np.std(tprs, axis=0)
+        tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
+        tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
+        ax.fill_between(
+            mean_fpr,
+            tprs_lower,
+            tprs_upper,
+            color="grey",
+            alpha=0.2,
+            label=r"$\pm$ 1 std. dev.",
+        )
+
+        ax.set(
+            xlabel="False Positive Rate",
+            ylabel="True Positive Rate",
+            title=f"Mean ROC curve with variability\n(Positive label '')",
+        )
+        ax.legend(loc="lower right")
+
+        #PRC
+        ax = axs[1]
+        #mean_precision = np.mean(precision_vec, axis=0)
+        #mean_recall=np.mean(recall_vec, axis=0)
+        mean_aps = np.mean(aps_vec)
+        std_aps = np.std(aps_vec)
+        #ax.plot(
+        #    mean_recall,
+        #    mean_precision,
+        #    color="b",
+        #    label=r"Mean PRC (APS = %0.2f $\pm$ %0.2f)" % (mean_aps, std_aps),
+        #    lw=2,
+        #    alpha=0.8,
+        #)
+        print("Mean APS:",mean_aps)
+        print("stardard deviation APS:",std_aps)
+        ax.set(
+            xlabel="Recall",
+            ylabel="Precision",
+            title=f"Mean PRC curve with variability\n(Positive label '')",
+        )
+        ax.legend(loc="lower right")
+
+        plt.show()
+
+        model_final = BertForSequenceClassification.from_pretrained(
+            "neuralmind/bert-base-portuguese-cased", num_labels=5, torch_dtype="auto"
+        )
+        train_data=X
+        train_target=y
+        train_data,train_target=self.upsample(train_data,train_target,71, "Medium")
+        train_data,train_target=self.upsample(train_data,train_target,13, "High")
+        train_data,train_target=self.upsample(train_data,train_target,3, "VeryHigh")
+        train_data,train_target=self.upsample(train_data,train_target,240, "Low")
+        model_final=self.train_model(classifier,train_data,train_target,X[test],y[test])
 
         return model_final
