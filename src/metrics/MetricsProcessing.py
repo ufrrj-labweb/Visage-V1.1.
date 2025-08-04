@@ -6,6 +6,7 @@ from sklearn.metrics import recall_score
 from sklearn.decomposition import TruncatedSVD
 from sklearn.metrics import f1_score, accuracy_score, recall_score, precision_score, RocCurveDisplay, auc, roc_curve ,precision_recall_curve, PrecisionRecallDisplay
 from sklearn.model_selection import StratifiedKFold
+from enelvo.normaliser import Normaliser
 
 
 class MetricsProcessing:
@@ -330,3 +331,144 @@ class MetricsProcessing:
         ax.legend(loc="lower right")
 
         plt.show()
+
+    def evaluate_alt_upsampled(self,classifier,X,y,n_splits=5):
+
+        vect = None
+        def text_preprocessing_nltk(corpus,vect):
+            norm = Normaliser(tokenizer="readable", sanitize=True)
+            lemm = []
+            for texts in corpus:
+                lemm.append(norm.normalise(texts))
+            processed = vect.transform(lemm)
+            return processed
+
+        def upsample(features, target, repeat, value):
+            features_true = features[target == value]
+            features_false = features[target != value]
+            target_true = target[target == value]
+            target_false = target[target != value]
+
+            features_upsampled = pd.concat([features_false] + [features_true] * repeat)
+            target_upsampled = pd.concat([target_false] + [target_true] * repeat)
+
+            return features_upsampled, target_upsampled
+
+        cv = StratifiedKFold(n_splits=n_splits,shuffle=True,random_state=12345)
+
+        tprs = []
+        aucs = []
+        precision_vec=[]
+        precision_vec_alt=[]
+        recall_vec=[]
+        aps_vec=[]
+        mean_fpr = np.linspace(0, 1, 100)
+        mean_test = np.linspace(0, 1, 100)
+
+        fig, axs = plt.subplots(1,2,figsize=(15, 6))
+        for fold, (train, test) in enumerate(cv.split(X, y)):
+            test_data=X[test]
+            test_target=y[test]
+
+            train_data=X[train]
+            train_target=y[train]
+            train_data,train_target=upsample(train_data,train_target,71, "Medium")
+            train_data,train_target=upsample(train_data,train_target,13, "High")
+            train_data,train_target=upsample(train_data,train_target,3, "VeryHigh")
+            train_data,train_target=upsample(train_data,train_target,240, "Low")
+
+            train_data=text_preprocessing_nltk(train_data,vect)
+            test_data=text_preprocessing_nltk(test_data,vect)
+
+            classifier.fit(train_data, train_target)
+
+            #Probability and target matrix
+            prob_test_vec = classifier.predict_proba(test_data)
+            test_matriz = self.prediction_matriz_by_class(data=test_target)
+
+            #ROC-AUC score
+            fpr, tpr, thresholds = roc_curve(test_matriz.values.ravel(),prob_test_vec.ravel())
+            auc_score = auc(fpr, tpr)
+
+            viz = RocCurveDisplay.from_predictions(
+                test_matriz.values.ravel(),
+                prob_test_vec.ravel(),
+                name=f"ROC fold {fold}",
+                ax=axs[0],
+                plot_chance_level=(fold == n_splits - 1),
+            )
+            interp_tpr = np.interp(mean_fpr, viz.fpr, viz.tpr)
+            interp_tpr[0] = 0.0
+            tprs.append(interp_tpr)
+            aucs.append(viz.roc_auc)
+
+            #PRC-APS score
+            precision, recall, thresholds = precision_recall_curve(test_matriz.values.ravel(),prob_test_vec.ravel())
+            aps = metrics.average_precision_score(test_matriz.values.ravel(), prob_test_vec.ravel(), average="micro")
+
+            dis = PrecisionRecallDisplay.from_predictions(test_matriz.values.ravel(), prob_test_vec.ravel(),name=f"PRC fold {fold}",ax=axs[1],plot_chance_level=(fold == n_splits - 1))
+            #interp_tpr_aps = np.interp(mean_fpr, dis.fpr, dis.tpr)
+            #interp_tpr_aps[0] = 0.0
+            precision_vec.append(precision)
+            recall_vec.append(recall)
+            aps_vec.append(aps)
+
+        #ROC
+        ax = axs[0]
+        mean_tpr = np.mean(tprs, axis=0)
+        mean_tpr[-1] = 1.0
+        mean_auc = auc(mean_fpr, mean_tpr)
+        std_auc = np.std(aucs)
+        ax.plot(
+            mean_fpr,
+            mean_tpr,
+            color="b",
+            label=r"Mean ROC (AUC = %0.2f $\pm$ %0.2f)" % (mean_auc, std_auc),
+            lw=2,
+            alpha=0.8,
+        )
+
+        std_tpr = np.std(tprs, axis=0)
+        tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
+        tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
+        ax.fill_between(
+            mean_fpr,
+            tprs_lower,
+            tprs_upper,
+            color="grey",
+            alpha=0.2,
+            label=r"$\pm$ 1 std. dev.",
+        )
+
+        ax.set(
+            xlabel="False Positive Rate",
+            ylabel="True Positive Rate",
+            title=f"Mean ROC curve with variability\n(Positive label '')",
+        )
+        ax.legend(loc="lower right")
+
+        #PRC
+        ax = axs[1]
+        #mean_precision = np.mean(precision_vec, axis=0)
+        #mean_recall=np.mean(recall_vec, axis=0)
+        mean_aps = np.mean(aps_vec)
+        std_aps = np.std(aps_vec)
+        #ax.plot(
+        #    mean_recall,
+        #    mean_precision,
+        #    color="b",
+        #    label=r"Mean PRC (APS = %0.2f $\pm$ %0.2f)" % (mean_aps, std_aps),
+        #    lw=2,
+        #    alpha=0.8,
+        #)
+        print("Mean APS:",mean_aps)
+        print("stardard deviation APS:",std_aps)
+        ax.set(
+            xlabel="Recall",
+            ylabel="Precision",
+            title=f"Mean PRC curve with variability\n(Positive label '')",
+        )
+        ax.legend(loc="lower right")
+
+        plt.show()
+
