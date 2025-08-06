@@ -6,6 +6,8 @@ from sklearn.metrics import recall_score
 from sklearn.decomposition import TruncatedSVD
 from sklearn.metrics import f1_score, accuracy_score, recall_score, precision_score, RocCurveDisplay, auc, roc_curve ,precision_recall_curve, PrecisionRecallDisplay
 from sklearn.model_selection import StratifiedKFold
+from nltk.corpus import stopwords as nltk_stopwords
+from sklearn.feature_extraction.text import TfidfVectorizer
 from enelvo.normaliser import Normaliser
 
 
@@ -365,6 +367,14 @@ class MetricsProcessing:
         mean_fpr = np.linspace(0, 1, 100)
         mean_test = np.linspace(0, 1, 100)
 
+        norm = Normaliser(tokenizer="readable", sanitize=True)
+        lemm = []
+        for texts in X:
+            lemm.append(norm.normalise(texts))
+        stop_words = list(nltk_stopwords.words("portuguese"))
+        vect = TfidfVectorizer(stop_words=stop_words)
+        vect.fit(lemm)
+
         fig, axs = plt.subplots(1,2,figsize=(15, 6))
         for fold, (train, test) in enumerate(cv.split(X, y)):
             test_data=X[test]
@@ -380,10 +390,10 @@ class MetricsProcessing:
             train_data=text_preprocessing_nltk(train_data,vect)
             test_data=text_preprocessing_nltk(test_data,vect)
 
-            classifier.fit(train_data, train_target)
+            classifier.fit(train_data.toarray(), train_target)
 
             #Probability and target matrix
-            prob_test_vec = classifier.predict_proba(test_data)
+            prob_test_vec = classifier.predict_proba(test_data.toarray())
             test_matriz = self.prediction_matriz_by_class(data=test_target)
 
             #ROC-AUC score
