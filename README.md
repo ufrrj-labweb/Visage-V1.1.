@@ -5,7 +5,7 @@ Code and images used for the VISAGE research project.
 
 V1.1 version, made to adress some issues in the original code
 
-Model now available on hugging faces:
+Model available on hugging faces:
 <https://huggingface.co/MHCTDS/visage>
 
 The Python version is 3.8, for extra stability at the cost of speed.
@@ -16,7 +16,9 @@ If your aim is not to reproduce the results but just use the code to learn, the 
 
 Acellerate is a library that allows for the automatic parallelization of code using multiple CPUs, GPUs and NPUs based on the configuration you use, with the option of configuring your own settings or letting it auto recognize your hardware on installation via pip.
 
-Requirements was made for mac, so it might not work on other pc, adapt it as necessary.
+Requirements was made for mac, so it can't be installed directly to other systems.
+
+Tested on python 3.12 on linux for cuda, but needs a few adjustments to the functions to natively run on a cuda gpu.
 
 Project Organization
 ------------
