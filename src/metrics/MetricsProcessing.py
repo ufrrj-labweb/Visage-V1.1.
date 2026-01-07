@@ -334,29 +334,10 @@ class MetricsProcessing:
 
         plt.show()
 
-    def evaluate_alt_upsampled(self,classifier,X,y,n_splits=5):
+    
+        
+    def evaluate_alt_upsampled(self,classifier,train_data_list,train_target_list,test_data_list,test_target_list,n_splits=10):
 
-        vect = None
-        def text_preprocessing_nltk(corpus,vect):
-            norm = Normaliser(tokenizer="readable", sanitize=True)
-            lemm = []
-            for texts in corpus:
-                lemm.append(norm.normalise(texts))
-            processed = vect.transform(lemm)
-            return processed
-
-        def upsample(features, target, repeat, value):
-            features_true = features[target == value]
-            features_false = features[target != value]
-            target_true = target[target == value]
-            target_false = target[target != value]
-
-            features_upsampled = pd.concat([features_false] + [features_true] * repeat)
-            target_upsampled = pd.concat([target_false] + [target_true] * repeat)
-
-            return features_upsampled, target_upsampled
-
-        cv = StratifiedKFold(n_splits=n_splits,shuffle=True,random_state=12345)
 
         tprs = []
         aucs = []
@@ -367,28 +348,12 @@ class MetricsProcessing:
         mean_fpr = np.linspace(0, 1, 100)
         mean_test = np.linspace(0, 1, 100)
 
-        norm = Normaliser(tokenizer="readable", sanitize=True)
-        lemm = []
-        for texts in X:
-            lemm.append(norm.normalise(texts))
-        stop_words = list(nltk_stopwords.words("portuguese"))
-        vect = TfidfVectorizer(stop_words=stop_words)
-        vect.fit(lemm)
-
         fig, axs = plt.subplots(1,2,figsize=(15, 6))
-        for fold, (train, test) in enumerate(cv.split(X, y)):
-            test_data=X[test]
-            test_target=y[test]
-
-            train_data=X[train]
-            train_target=y[train]
-            train_data,train_target=upsample(train_data,train_target,71, "Medium")
-            train_data,train_target=upsample(train_data,train_target,13, "High")
-            train_data,train_target=upsample(train_data,train_target,3, "VeryHigh")
-            train_data,train_target=upsample(train_data,train_target,240, "Low")
-
-            train_data=text_preprocessing_nltk(train_data,vect)
-            test_data=text_preprocessing_nltk(test_data,vect)
+        for fold in range(10):
+            train_data=train_data_list[fold]
+            train_target=train_target_list[fold]
+            test_data=test_data_list[fold]
+            test_target=test_target_list[fold]
 
             classifier.fit(train_data.toarray(), train_target)
 
@@ -481,4 +446,6 @@ class MetricsProcessing:
         ax.legend(loc="lower right")
 
         plt.show()
+
+
 
