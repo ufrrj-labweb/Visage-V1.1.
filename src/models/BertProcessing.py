@@ -891,6 +891,8 @@ class BertProcessing:
             dataset = load_dataset('csv', data_files={'train': "./data/train.csv",'test': "./data/test.csv"}).with_format("torch", device=device)
             tokenized_datasets = dataset.map(self.text_preprocessing, batched=True,batch_size=len(y[train])+len(y[test]))
             
+            datasets_list.append(tokenized_datasets)
+            
             tokenizer=AutoTokenizer.from_pretrained(
                 "neuralmind/bert-base-portuguese-cased",
                 do_lower_case=False,
@@ -907,9 +909,75 @@ class BertProcessing:
             train_tokens_list.append(tokenizer(list(X[train])))
             train_target_list.append(y[train])
             
-        return train_tokens_list,test_tokens_list,
+        return train_tokens_list,train_target_list,test_tokens_list,test_target_list,datasets_list
     
-    def evaluate_alt_2(self,X,y,n_splits=5):
+    def text_preprocessing_upsampled(self,X,y,n_splits=5):
+        cv = StratifiedKFold(n_splits=n_splits,shuffle=True,random_state=12345)
+        y=y.reset_index(drop=True)
+        
+        datasets_list=[]
+        
+        test_tokens_list=[]
+        test_target_list=[]
+        
+        train_tokens_list=[]
+        train_target_list=[]
+        for fold, (train, test) in enumerate(cv.split(X, y)):
+            
+            test_data=X[test]
+            test_target=y[test]
+
+            pretrain_data=X[train]
+            pretrain_target=y[train]
+            pretrain_data,pretrain_target=self.upsample_alt(pretrain_data,pretrain_target,71, "Medium")
+            pretrain_data,pretrain_target=self.upsample_alt(pretrain_data,pretrain_target,13, "High")
+            pretrain_data,pretrain_target=self.upsample_alt(pretrain_data,pretrain_target,3, "VeryHigh")
+            pretrain_data,pretrain_target=self.upsample_alt(pretrain_data,pretrain_target,240, "Low")
+            
+            df_train=pd.DataFrame()
+            df_train["Classe de Violência"]=pretrain_target
+            df_train["text"]=pretrain_data
+            df_test=pd.DataFrame()
+            df_test["Classe de Violência"]=y[test]
+            df_test["text"]=X[test]
+            df_train['Classe de Violência']=self.numerical_target(df_train['Classe de Violência'])
+            df_test['Classe de Violência']=self.numerical_target(df_test['Classe de Violência'])
+                
+            train_data=pd.DataFrame()
+            train_data['label']=df_train['Classe de Violência']
+            train_data['text']=df_train['text']
+            train_data.to_csv('./data/train.csv',index=False)
+                
+            test_data=pd.DataFrame()
+            test_data['label']=df_test['Classe de Violência']
+            test_data['text']=df_test['text']
+            test_data.to_csv('./data/test.csv',index=False)
+
+            device=torch.device("mps")
+            dataset = load_dataset('csv', data_files={'train': "./data/train.csv",'test': "./data/test.csv"}).with_format("torch", device=device)
+            tokenized_datasets = dataset.map(self.text_preprocessing, batched=True,batch_size=len(y[train])+len(y[test]))
+            
+            datasets_list.append(tokenized_datasets)
+            
+            tokenizer=AutoTokenizer.from_pretrained(
+                "neuralmind/bert-base-portuguese-cased",
+                do_lower_case=False,
+                padding="max_length",
+                truncation=True,
+                max_length=self.max_length,
+            )
+
+
+            #Probability and target matrix
+            test_tokens_list.append(tokenizer(list(X[test])))
+            test_target_list.append(y[test])
+            
+            train_tokens_list.append(tokenizer(list(X[train])))
+            train_target_list.append(y[train])
+            
+        return train_tokens_list,train_target_list,test_tokens_list,test_target_list,datasets_list
+    
+    def evaluate_alt_2(self,train_tokens_list,train_target_list,test_tokens_list,test_target_list,datasets_list,n_splits=5):
         cv = StratifiedKFold(n_splits=n_splits,shuffle=True,random_state=12345)
         y=y.reset_index(drop=True)
         tprs = []
@@ -922,34 +990,20 @@ class BertProcessing:
         mean_test = np.linspace(0, 1, 100)
 
         fig, axs = plt.subplots(1,2,figsize=(15, 6))
-        for fold, (train, test) in enumerate(cv.split(X, y)):
+        for fold in range(n_splits):
             #Train BERT with data
             classifier = BertForSequenceClassification.from_pretrained(
             "neuralmind/bert-base-portuguese-cased", num_labels=5, torch_dtype="auto"
             )
 
-            model=self.train_model(classifier,X[train],y[train],X[test],y[test])
+            model=self.train_model_alt(classifier,datasets_list[fold])
 
-            tokenizer=AutoTokenizer.from_pretrained(
-                "neuralmind/bert-base-portuguese-cased",
-                do_lower_case=False,
-                padding="max_length",
-                truncation=True,
-                max_length=self.max_length,
-            )
-
-            local_pipe=pipeline(
-                "text-classification",
-                model=model,
-                tokenizer=tokenizer,
-                device_map="auto",
-            )
 
             #Probability and target matrix
-            output = pd.DataFrame(local_pipe.predict(list(X[test])))
+            output = pd.DataFrame(model.predict(test_tokens_list[fold]))
             pred_target = output[:]["label"]
             pred_target = self.convert_label(pred_target)
-            test_matriz = self.prediction_matriz_by_class_bert(data=self.numerical_target(y[test]))
+            test_matriz = self.prediction_matriz_by_class_bert(data=self.numerical_target(test_target_list[fold]))
             pred_proba_matriz = self.prediction_matriz_by_class_bert(data=pred_target)
 
             #ROC-AUC score
@@ -1045,30 +1099,7 @@ class BertProcessing:
 
         return model_final
     
-    def train_model_alt(self,model,X_train,y_train,X_test,y_test):
-            
-        df_train=pd.DataFrame()
-        df_train["Classe de Violência"]=y_train
-        df_train["text"]=X_train
-        df_test=pd.DataFrame()
-        df_test["Classe de Violência"]=y_test
-        df_test["text"]=X_test
-        df_train['Classe de Violência']=self.numerical_target(df_train['Classe de Violência'])
-        df_test['Classe de Violência']=self.numerical_target(df_test['Classe de Violência'])
-            
-        train_data=pd.DataFrame()
-        train_data['label']=df_train['Classe de Violência']
-        train_data['text']=df_train['text']
-        train_data.to_csv('./data/train.csv',index=False)
-            
-        test_data=pd.DataFrame()
-        test_data['label']=df_test['Classe de Violência']
-        test_data['text']=df_test['text']
-        test_data.to_csv('./data/test.csv',index=False)
-
-        device=torch.device("mps")
-        dataset = load_dataset('csv', data_files={'train': "./data/train.csv",'test': "./data/test.csv"}).with_format("torch", device=device)
-        tokenized_datasets = dataset.map(self.text_preprocessing, batched=True,batch_size=len(y_train)+len(y_test))
+    def train_model_alt(self,model, tokenized_datasets):
             
         train_dataset = tokenized_datasets["train"]
         test_dataset = tokenized_datasets["test"]
