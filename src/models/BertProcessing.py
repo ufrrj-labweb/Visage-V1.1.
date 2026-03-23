@@ -17,6 +17,8 @@ from sklearn.model_selection import cross_validate, StratifiedKFold
 import os
 from accelerate import Accelerator
 import torch
+from datetime import datetime 
+import torch
 
 
 class BertProcessing:
@@ -290,7 +292,7 @@ class BertProcessing:
         test_data['text']=df_test['text']
         test_data.to_csv('./data/test.csv',index=False)
 
-        device=torch.device("mps")
+        device=torch.device("cuda")
         dataset = load_dataset('csv', data_files={'train': "./data/train.csv",'test': "./data/test.csv"}).with_format("torch", device=device)
         tokenized_datasets = dataset.map(self.text_preprocessing, batched=True,batch_size=len(y_train)+len(y_test))
             
@@ -298,7 +300,8 @@ class BertProcessing:
         test_dataset = tokenized_datasets["test"]
 
         training_args = TrainingArguments(output_dir="test_trainer",
-        evaluation_strategy="epoch",
+        dataloader_pin_memory=False,
+        eval_strategy="epoch", #evaluation_strategy="epoch",
         save_strategy="epoch",
         load_best_model_at_end=True,
         push_to_hub=False,
@@ -855,7 +858,7 @@ class BertProcessing:
 
         return model_final
     
-    def text_preprocessing(self,X,y,n_splits=5):
+    def text_processing(self,X,y,n_splits=5):
         cv = StratifiedKFold(n_splits=n_splits,shuffle=True,random_state=12345)
         y=y.reset_index(drop=True)
         
@@ -887,7 +890,7 @@ class BertProcessing:
             test_data['text']=df_test['text']
             test_data.to_csv('./data/test.csv',index=False)
 
-            device=torch.device("mps")
+            device=torch.device("cuda")
             dataset = load_dataset('csv', data_files={'train': "./data/train.csv",'test': "./data/test.csv"}).with_format("torch", device=device)
             tokenized_datasets = dataset.map(self.text_preprocessing, batched=True,batch_size=len(y[train])+len(y[test]))
             
@@ -911,7 +914,7 @@ class BertProcessing:
             
         return train_tokens_list,train_target_list,test_tokens_list,test_target_list,datasets_list
     
-    def text_preprocessing_upsampled(self,X,y,n_splits=5):
+    def text_processing_upsampled(self,X,y,n_splits=5):
         cv = StratifiedKFold(n_splits=n_splits,shuffle=True,random_state=12345)
         y=y.reset_index(drop=True)
         
@@ -953,7 +956,7 @@ class BertProcessing:
             test_data['text']=df_test['text']
             test_data.to_csv('./data/test.csv',index=False)
 
-            device=torch.device("mps")
+            device=torch.device("cuda")
             dataset = load_dataset('csv', data_files={'train': "./data/train.csv",'test': "./data/test.csv"}).with_format("torch", device=device)
             tokenized_datasets = dataset.map(self.text_preprocessing, batched=True,batch_size=len(y[train])+len(y[test]))
             
@@ -977,9 +980,40 @@ class BertProcessing:
             
         return train_tokens_list,train_target_list,test_tokens_list,test_target_list,datasets_list
     
+    def train_model_alt(self,model, tokenized_datasets):
+            
+        train_dataset = tokenized_datasets["train"]
+        test_dataset = tokenized_datasets["test"]
+
+        training_args = TrainingArguments(output_dir="test_trainer",
+        dataloader_pin_memory=False,
+        eval_strategy="epoch",
+        save_strategy="epoch",
+        load_best_model_at_end=True,
+        push_to_hub=False,
+        )
+        accelerator = Accelerator()
+        model=accelerator.prepare(model)
+        trainer = accelerator.prepare(Trainer(
+            model=model,
+            args=training_args,
+            train_dataset=train_dataset,
+            eval_dataset=test_dataset,
+            compute_metrics=self.compute_metrics,
+        ))
+        trainer.train()
+
+        return model
+    
     def evaluate_alt_2(self,train_tokens_list,train_target_list,test_tokens_list,test_target_list,datasets_list,n_splits=5):
+        def log_progress(message): 
+            timestamp_format = '%Y-%h-%d-%H:%M:%S' # Year-Monthname-Day-Hour-Minute-Second 
+            now = datetime.now() # get current timestamp 
+            timestamp = now.strftime(timestamp_format) 
+            with open("log file.txt","a") as f: 
+                f.write(timestamp + ',' + message + '\n') 
         cv = StratifiedKFold(n_splits=n_splits,shuffle=True,random_state=12345)
-        y=y.reset_index(drop=True)
+        
         tprs = []
         aucs = []
         precision_vec=[]
@@ -995,16 +1029,23 @@ class BertProcessing:
             classifier = BertForSequenceClassification.from_pretrained(
             "neuralmind/bert-base-portuguese-cased", num_labels=5, torch_dtype="auto"
             )
+            log_progress("Model loaded")
 
             model=self.train_model_alt(classifier,datasets_list[fold])
+            log_progress("Model trained")
+            
 
 
             #Probability and target matrix
-            output = pd.DataFrame(model.predict(test_tokens_list[fold]))
+            model_inputs_test = torch.tensor(test_tokens_list[fold]['input_ids'])
+            output = pd.DataFrame(model(model_inputs_test))
+            log_progress("output done")
             pred_target = output[:]["label"]
             pred_target = self.convert_label(pred_target)
+            log_progress("pred target done")
             test_matriz = self.prediction_matriz_by_class_bert(data=self.numerical_target(test_target_list[fold]))
             pred_proba_matriz = self.prediction_matriz_by_class_bert(data=pred_target)
+            log_progress("Main matrixes done")
 
             #ROC-AUC score
             fpr, tpr, thresholds = roc_curve(test_matriz.values.ravel(),pred_proba_matriz.values.ravel())
@@ -1095,30 +1136,7 @@ class BertProcessing:
         model_final = BertForSequenceClassification.from_pretrained(
             "neuralmind/bert-base-portuguese-cased", num_labels=5, torch_dtype="auto"
         )
-        model_final=self.train_model(classifier,X,y,X[test],y[test])
+        #model_final=self.train_model(classifier,X,y,X[test],y[test])
 
-        return model_final
+        return 
     
-    def train_model_alt(self,model, tokenized_datasets):
-            
-        train_dataset = tokenized_datasets["train"]
-        test_dataset = tokenized_datasets["test"]
-
-        training_args = TrainingArguments(output_dir="test_trainer",
-        evaluation_strategy="epoch",
-        save_strategy="epoch",
-        load_best_model_at_end=True,
-        push_to_hub=False,
-        )
-        accelerator = Accelerator()
-        model=accelerator.prepare(model)
-        trainer = accelerator.prepare(Trainer(
-            model=model,
-            args=training_args,
-            train_dataset=train_dataset,
-            eval_dataset=test_dataset,
-            compute_metrics=self.compute_metrics,
-        ))
-        trainer.train()
-
-        return model
