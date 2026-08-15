@@ -8,3 +8,137 @@
 2026-Jan-21-20:24:36,Model trained
 2026-Jan-21-20:51:58,Model loaded
 2026-Jan-21-20:52:21,Model trained
+2026-Aug-14-21:14:02,Model loaded
+2026-Aug-14-21:14:23,Model trained
+2026-Aug-14-21:18:36,Model loaded
+2026-Aug-14-21:18:57,Model trained
+2026-Aug-14-21:20:03,Model loaded
+2026-Aug-14-21:20:24,Model trained
+2026-Aug-14-21:41:19,Model loaded
+2026-Aug-14-21:41:40,Model trained
+2026-Aug-14-21:44:02,Model loaded
+2026-Aug-14-21:44:23,Model trained
+2026-Aug-14-21:44:23,output done
+2026-Aug-14-21:46:23,Model loaded
+2026-Aug-14-21:46:44,Model trained
+2026-Aug-14-21:48:09,Model loaded
+2026-Aug-14-21:48:30,Model trained
+2026-Aug-14-21:48:31,output done
+2026-Aug-14-21:49:58,Model loaded
+2026-Aug-14-21:50:19,Model trained
+2026-Aug-14-21:50:19,output done
+2026-Aug-14-21:52:21,Model loaded
+2026-Aug-14-21:52:42,Model trained
+2026-Aug-14-21:52:42,output done
+2026-Aug-14-22:06:06,Model loaded
+2026-Aug-14-22:06:28,Model trained
+2026-Aug-14-22:06:28,output done
+2026-Aug-14-22:06:28,pred target done
+2026-Aug-14-22:06:28,Main matrixes done
+2026-Aug-14-22:10:37,Model loaded
+2026-Aug-14-22:10:58,Model trained
+2026-Aug-14-22:10:58,output done
+2026-Aug-14-22:10:58,pred target done
+2026-Aug-14-22:10:58,Main matrixes done
+2026-Aug-14-22:12:30,Model loaded
+2026-Aug-14-22:12:51,Model trained
+2026-Aug-14-22:12:51,output done
+2026-Aug-14-22:12:51,pred target done
+2026-Aug-14-22:12:51,Main matrixes done
+2026-Aug-14-22:14:56,Model loaded
+2026-Aug-14-22:15:17,Model trained
+2026-Aug-14-22:15:17,output done
+2026-Aug-14-22:15:17,pred target done
+2026-Aug-14-22:15:17,Main matrixes done
+2026-Aug-14-22:15:18,Model loaded
+2026-Aug-14-22:15:39,Model trained
+2026-Aug-14-22:17:09,Model loaded
+2026-Aug-14-22:17:30,Model trained
+2026-Aug-14-22:17:30,output done
+2026-Aug-14-22:17:30,pred target done
+2026-Aug-14-22:17:30,Main matrixes done
+2026-Aug-14-22:17:30,roc_curve done
+2026-Aug-14-22:17:30,RocDisplay done
+2026-Aug-14-22:17:30,aps done
+2026-Aug-14-22:17:31,Model loaded
+2026-Aug-14-22:17:52,Model trained
+2026-Aug-14-22:18:37,Model loaded
+2026-Aug-14-22:18:59,Model trained
+2026-Aug-14-22:18:59,output done
+2026-Aug-14-22:18:59,pred target done
+2026-Aug-14-22:18:59,Main matrixes done
+2026-Aug-14-22:18:59,roc_curve done
+2026-Aug-14-22:18:59,RocDisplay done
+2026-Aug-14-22:18:59,aps done
+2026-Aug-14-22:19:00,Model loaded
+2026-Aug-14-22:19:20,Model trained
+2026-Aug-14-22:19:20,output done
+2026-Aug-14-22:19:20,pred target done
+2026-Aug-14-22:19:20,Main matrixes done
+2026-Aug-14-22:19:20,roc_curve done
+2026-Aug-14-22:19:20,RocDisplay done
+2026-Aug-14-22:19:20,aps done
+2026-Aug-14-22:19:21,Model loaded
+2026-Aug-14-22:19:42,Model trained
+2026-Aug-14-22:19:43,output done
+2026-Aug-14-22:19:43,pred target done
+2026-Aug-14-22:19:43,Main matrixes done
+2026-Aug-14-22:19:43,roc_curve done
+2026-Aug-14-22:19:43,RocDisplay done
+2026-Aug-14-22:19:43,aps done
+2026-Aug-14-22:19:44,Model loaded
+2026-Aug-14-22:20:05,Model trained
+2026-Aug-14-22:20:05,output done
+2026-Aug-14-22:20:05,pred target done
+2026-Aug-14-22:20:05,Main matrixes done
+2026-Aug-14-22:20:05,roc_curve done
+2026-Aug-14-22:20:05,RocDisplay done
+2026-Aug-14-22:20:05,aps done
+2026-Aug-14-22:20:06,Model loaded
+2026-Aug-14-22:20:27,Model trained
+2026-Aug-14-22:20:27,output done
+2026-Aug-14-22:20:27,pred target done
+2026-Aug-14-22:20:27,Main matrixes done
+2026-Aug-14-22:20:27,roc_curve done
+2026-Aug-14-22:20:27,RocDisplay done
+2026-Aug-14-22:20:27,aps done
+2026-Aug-14-22:20:28,Model loaded
+2026-Aug-14-22:20:50,Model trained
+2026-Aug-14-22:20:50,output done
+2026-Aug-14-22:20:50,pred target done
+2026-Aug-14-22:20:50,Main matrixes done
+2026-Aug-14-22:20:50,roc_curve done
+2026-Aug-14-22:20:50,RocDisplay done
+2026-Aug-14-22:20:50,aps done
+2026-Aug-14-22:20:51,Model loaded
+2026-Aug-14-22:21:12,Model trained
+2026-Aug-14-22:21:13,output done
+2026-Aug-14-22:21:13,pred target done
+2026-Aug-14-22:21:13,Main matrixes done
+2026-Aug-14-22:21:13,roc_curve done
+2026-Aug-14-22:21:13,RocDisplay done
+2026-Aug-14-22:21:13,aps done
+2026-Aug-14-22:21:14,Model loaded
+2026-Aug-14-22:21:35,Model trained
+2026-Aug-14-22:21:35,output done
+2026-Aug-14-22:21:35,pred target done
+2026-Aug-14-22:21:35,Main matrixes done
+2026-Aug-14-22:21:35,roc_curve done
+2026-Aug-14-22:21:35,RocDisplay done
+2026-Aug-14-22:21:35,aps done
+2026-Aug-14-22:21:36,Model loaded
+2026-Aug-14-22:21:57,Model trained
+2026-Aug-14-22:21:57,output done
+2026-Aug-14-22:21:57,pred target done
+2026-Aug-14-22:21:57,Main matrixes done
+2026-Aug-14-22:21:57,roc_curve done
+2026-Aug-14-22:21:57,RocDisplay done
+2026-Aug-14-22:21:57,aps done
+2026-Aug-14-22:21:58,Model loaded
+2026-Aug-14-22:22:20,Model trained
+2026-Aug-14-22:22:20,output done
+2026-Aug-14-22:22:20,pred target done
+2026-Aug-14-22:22:20,Main matrixes done
+2026-Aug-14-22:22:20,roc_curve done
+2026-Aug-14-22:22:20,RocDisplay done
+2026-Aug-14-22:22:20,aps done

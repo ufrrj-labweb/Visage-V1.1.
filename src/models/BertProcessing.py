@@ -1037,19 +1037,56 @@ class BertProcessing:
 
 
             #Probability and target matrix
-            model_inputs_test = torch.tensor(test_tokens_list[fold]['input_ids'])
-            output = pd.DataFrame(model(model_inputs_test))
+            #model_inputs_test = torch.tensor(test_tokens_list[fold]['input_ids'])
+            #output = pd.DataFrame(model(model_inputs_test))
+            
+            # Probability and target matrix
+            model.eval()
+            
+            MAX_TOKENS=128
+            mask_list=[]
+            for index,i in enumerate(test_tokens_list[fold]['input_ids']):
+                mask=[]
+                lenght=len(i)
+                if lenght<MAX_TOKENS:
+                    for _ in range(MAX_TOKENS-lenght):
+                        i.append(0)
+                    test_tokens_list[0]['input_ids'][index]=i
+                for _ in range(lenght):
+                    mask.append(1)
+                for _ in range(MAX_TOKENS-lenght):
+                    mask.append(0)
+                mask_list.append(mask)
+
+            model_inputs_test = torch.tensor(test_tokens_list[fold]['input_ids']).to("cuda")
+            attention_mask_test = torch.tensor(mask_list).to("cuda")
+
+            with torch.no_grad():
+                output = model(input_ids=model_inputs_test, attention_mask=attention_mask_test)
+                #probs = torch.softmax(output.logits, dim=-1).cpu()
+
+            #predicted_labels = pd.DataFrame(probs.numpy())  # values in {0,1,2,3,4}
+            predicted_labels = output.logits.argmax(dim=-1).cpu().numpy()  # values in {0,1,2,3,4}
+            print(predicted_labels)
+            
             log_progress("output done")
-            pred_target = output[:]["label"]
-            pred_target = self.convert_label(pred_target)
+            #pred_target = output[:]["label"]
+            #pred_target = self.convert_label(predicted_labels)
             log_progress("pred target done")
             test_matriz = self.prediction_matriz_by_class_bert(data=self.numerical_target(test_target_list[fold]))
-            pred_proba_matriz = self.prediction_matriz_by_class_bert(data=pred_target)
+            #pred_proba_matriz = self.prediction_matriz_by_class_bert(data=pred_target)
+            pred_proba_matriz = self.prediction_matriz_by_class_bert(data=predicted_labels)
             log_progress("Main matrixes done")
+            #print(pred_target)
+            #print(test_matriz.values.ravel())
+            #print(len(test_matriz.values.ravel()))
+            #print(pred_proba_matriz.values.ravel())
+            #print(len(pred_proba_matriz.values.ravel()))
 
             #ROC-AUC score
             fpr, tpr, thresholds = roc_curve(test_matriz.values.ravel(),pred_proba_matriz.values.ravel())
             auc_score = auc(fpr, tpr)
+            log_progress("roc_curve done")
 
             viz = RocCurveDisplay.from_predictions(
                 test_matriz.values.ravel(),
@@ -1062,10 +1099,12 @@ class BertProcessing:
             interp_tpr[0] = 0.0
             tprs.append(interp_tpr)
             aucs.append(viz.roc_auc)
+            log_progress("RocDisplay done")
 
             #PRC-APS score
             precision, recall, thresholds = precision_recall_curve(test_matriz.values.ravel(),pred_proba_matriz.values.ravel())
             aps = metrics.average_precision_score(test_matriz.values.ravel(),pred_proba_matriz.values.ravel(), average="micro")
+            log_progress("aps done")
 
             dis = PrecisionRecallDisplay.from_predictions(test_matriz.values.ravel(),pred_proba_matriz.values.ravel(),name=f"PRC fold {fold}",ax=axs[1],plot_chance_level=(fold == n_splits - 1))
             #interp_tpr_aps = np.interp(mean_fpr, dis.fpr, dis.tpr)
